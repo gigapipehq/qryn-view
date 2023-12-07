@@ -46,11 +46,11 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
                             element={<MainRoute />}
                         />
                         <Route
-                            path="/plugins"
+                            path="/plugins/*"
                             element={<PluginsRoute />}
                         />
                            <Route
-                            path="/users"
+                            path="/users/*"
                             element={<UserRoles />}
                         />
 
