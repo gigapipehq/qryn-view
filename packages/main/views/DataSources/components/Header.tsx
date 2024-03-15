@@ -34,7 +34,7 @@ export function Header(props: HeaderProps) {
         ) {
             navigate(-1);
         } else {
-            navigate("/");
+            navigate("");
         }
     };
 

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { cx } from "@emotion/css";
 import { ThemeProvider, useTheme } from "@emotion/react";
 import { useCallback, useEffect, useState } from "react";
@@ -6,8 +7,10 @@ import { FlexColumn } from "./styles";
 
 import { LogsFormBuilderProps, Builder } from "./types";
 import { FormBuilders } from "./FormBuilders";
-import QueryPreview from "@ui/plugins/QueryPreview";
+import { QueryPreviewContainer } from "@ui/plugins/QueryPreview";
 import { useSelector } from "react-redux";
+import queryInit from "@ui/main/components/LabelBrowser/helpers/queryInit";
+import QueryEditor from "@ui/plugins/queryeditor";
 
 const initialBuilder: Builder = {
     operations: [],
@@ -44,24 +47,28 @@ const binaryOperatorOpts: any = {
 };
 
 /**
- * 
- * @param props 
+ *
+ * @param props
  * @returns The Logs Form Builder
  */
 export function LogsFormBuilder(props: LogsFormBuilderProps) {
-
     const {
         dataSourceId,
         labelValueChange,
         handleLogsVolumeChange,
         searchButton,
-        queryInput
     } = props;
 
     const dataSources = useSelector((store: any) => store.dataSources);
-    const start = useSelector ((store:any)=> store.start)
-    const stop = useSelector ((store:any)=> store.stop)
+    const start = useMemo(() => {
+        return new Date(props.data?.start);
+    }, [props?.data?.start]);
 
+    const stop = useMemo(() => {
+        return new Date(props.data?.stop);
+    }, [props?.data?.stop]);
+
+    const [editorValue, setEditorValue] = useState(queryInit(""));
     const { logsResponse } = useLogLabels(
         dataSourceId,
         start,
@@ -78,7 +85,7 @@ export function LogsFormBuilder(props: LogsFormBuilderProps) {
         (idx: number) => {
             setBuilders((prev) => [...prev, { ...prev[idx], isBinary: true }]);
         },
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+
         [builders]
     );
 
@@ -86,12 +93,11 @@ export function LogsFormBuilder(props: LogsFormBuilderProps) {
         if (builders[0].logsVolumeQuery !== "") {
             handleLogsVolumeChange(builders[0].logsVolumeQuery);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [builders]);
 
     useEffect(() => {
         labelValueChange(finalQuery);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        setEditorValue(queryInit(finalQuery));
     }, [finalQuery]);
 
     useEffect(() => {
@@ -115,7 +121,7 @@ export function LogsFormBuilder(props: LogsFormBuilderProps) {
         }
         return ` ${binaryOperatorOpts[binaryOpt]} ${vectString}`;
     };
-   
+
     const finalQueryOperator = (builders: Builder[]) => {
         let finalQuery = "";
 
@@ -133,8 +139,11 @@ export function LogsFormBuilder(props: LogsFormBuilderProps) {
 
     useEffect(() => {
         setFinalQuery(finalQueryOperator(builders));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [builders]);
+
+    const onEditorChange = (e) => {
+        labelValueChange(e[0]?.children[0]?.text);
+    };
 
     return (
         <ThemeProvider theme={mainTheme}>
@@ -147,13 +156,19 @@ export function LogsFormBuilder(props: LogsFormBuilderProps) {
                     setBuilders={setBuilders}
                     builders={builders}
                     finalQuery={finalQuery}
+                    start={start}
+                    stop={stop}
                 />
-                <QueryPreview
-                    queryText={finalQuery}
-                    searchButton={searchButton}
-                    queryInput={queryInput}
-                
-                />
+
+                <div className={cx(QueryPreviewContainer(mainTheme))}>
+                    <label>Raw Query</label>
+                    <QueryEditor
+                        onQueryChange={onEditorChange}
+                        defaultValue={editorValue}
+                        value={editorValue}
+                    />
+                    <div className="action-buttons">{searchButton}</div>
+                </div>
             </div>
         </ThemeProvider>
     );

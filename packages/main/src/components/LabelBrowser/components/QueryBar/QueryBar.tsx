@@ -7,7 +7,6 @@ import { css, cx } from "@emotion/css";
 import { ThemeProvider } from "@emotion/react";
 
 import { useMediaQuery } from "react-responsive";
-import DOMPurify from "isomorphic-dompurify";
 /**Actions */
 import getData from "@ui/store/actions/getData";
 import setQueryHistory from "@ui/store/actions/setQueryHistory";
@@ -46,7 +45,8 @@ import { Switch } from "@mui/material";
 import { SettingLabel } from "../styled";
 import MetricsSearch from "../../../DataViews/components/Metrics/MetricsSearch";
 import LogsSearch from "../../../DataViews/components/Logs/LogsSearch/LogsSearch";
-import useTheme from "@ui/theme/useTheme"
+import useTheme from "@ui/theme/useTheme";
+import sanitizeWithSigns from "@ui/helpers/sanitizeWithSigns";
 
 export function panelAction(name: any, value: any) {
     if (name === "left") {
@@ -116,11 +116,9 @@ const QueryBar: React.FC<QueryBarProps> = (props) => {
     const saveUrl = localUrl();
     const historyService = localService().historyStore();
     const theme = useTheme();
-    const historyOpen = useSelector((store:any) => store.historyOpen)
-    const isEmbed = useSelector((store:any) => store.isEmbed)
-    const queryHistory = useSelector((store:any) => store.queryHistory)
-    const start = useSelector((store:any) => store.start)
-    const stop = useSelector((store:any) => store.stop)
+    const historyOpen = useSelector((store: any) => store.historyOpen);
+    const isEmbed = useSelector((store: any) => store.isEmbed);
+    const queryHistory = useSelector((store: any) => store.queryHistory);
     const isSplit = useSelector((store: any) => store.isSplit);
     const panelQuery = useSelector((store: any) => store[name]);
     const isTabletOrMobile = useMediaQuery({ query: "(max-width: 1070px)" });
@@ -142,7 +140,7 @@ const QueryBar: React.FC<QueryBarProps> = (props) => {
         return defaultDataSources.find((f) => f.id === dataSourceId);
     }, [dataSourceId]);
 
-    const findCurrentDataSource = (dataSources: any, id: string) => {
+    const findCurrentDataSource = (dataSources: any) => {
         return dataSources?.find((f: any) => f.id === dataSourceId);
     };
 
@@ -155,7 +153,7 @@ const QueryBar: React.FC<QueryBarProps> = (props) => {
 
         setLogsLevel(expr, isLogsVolume);
 
-        const dataSource: any = findCurrentDataSource(dataSources, id);
+        const dataSource: any = findCurrentDataSource(dataSources);
 
         let currentDataSource: any = {};
 
@@ -203,16 +201,13 @@ const QueryBar: React.FC<QueryBarProps> = (props) => {
                     currentDataSource?.url
                 )
             );
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // force single view from small width
 
     useEffect(() => {
         setQueryInput(data.expr);
-        setQueryValue([
-            { children: [{ text: DOMPurify.sanitize(data.expr) }] },
-        ]);
+        setQueryValue([{ children: [{ text: sanitizeWithSigns(data.expr) }] }]);
     }, [data.expr]);
 
     useEffect(() => {
@@ -224,14 +219,13 @@ const QueryBar: React.FC<QueryBarProps> = (props) => {
         if (isTabletOrMobile && isSplit) {
             dispatch(setSplitView(false));
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isTabletOrMobile]);
 
     useEffect(() => {
         let { expr } = getLocalQueryItem(dataSourceId, id);
         let actLocalDs = getLocalDataSources(dataSourceId);
         setQueryInput(expr);
-        setQueryValue([{ children: [{ text: DOMPurify.sanitize(expr) }] }]);
+        setQueryValue([{ children: [{ text: sanitizeWithSigns(expr) }] }]);
 
         if (isLogsVolume && logsVolumeQuery) {
             setLogsLevel(expr, isLogsVolume);
@@ -314,40 +308,36 @@ const QueryBar: React.FC<QueryBarProps> = (props) => {
                 )
             );
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [dataSourceId, id]);
 
     useEffect(() => {
         if (typeof queryInput === "string") {
             setQueryInput(queryInput);
             setQueryValue([
-                { children: [{ text: DOMPurify.sanitize(queryInput) }] },
+                { children: [{ text: sanitizeWithSigns(queryInput) }] },
             ]);
             saveQuery();
             if (isLogsVolume) {
                 setLogsLevel(queryInput, true);
             }
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [queryInput]);
 
     useEffect(() => {
         if (typeof launchQuery === "string" && launchQuery !== "") {
             setQueryInput(launchQuery);
             setQueryValue([
-                { children: [{ text: DOMPurify.sanitize(launchQuery) }] },
+                { children: [{ text: sanitizeWithSigns(launchQuery) }] },
             ]);
             saveQuery();
             if (isLogsVolume) {
                 setLogsLevel(launchQuery, true);
             }
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [launchQuery]);
 
     useEffect(() => {
         setLogsLevel(queryInput, isLogsVolume);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [queryInput]);
 
     function setLogsLevel(queryInput: string, isLogsVolume: boolean) {
@@ -374,12 +364,12 @@ const QueryBar: React.FC<QueryBarProps> = (props) => {
     };
 
     const onMetricChange = (e: any) => {
-        const query = [{ children: [{ text: DOMPurify.sanitize(e) }] }];
+        const query = [{ children: [{ text: sanitizeWithSigns(e) }] }];
         handleQueryChange(query);
     };
 
     const onLogChange = (e: any) => {
-        const query = [{ children: [{ text: DOMPurify.sanitize(e) }] }];
+        const query = [{ children: [{ text: sanitizeWithSigns(e) }] }];
 
         handleQueryChange(query);
     };
@@ -394,8 +384,12 @@ const QueryBar: React.FC<QueryBarProps> = (props) => {
 
         let customStep = 0;
 
+        const dateStart = new Date(start);
+        const dateStop = new Date(stop);
+
         if (query.includes(`$__interval`)) {
-            const timeDiff = (stop.getTime() - start.getTime()) / 1000;
+            const timeDiff =
+                (dateStop?.getTime() - dateStart?.getTime()) / 1000;
 
             const timeProportion = timeDiff / 30;
 
@@ -424,11 +418,12 @@ const QueryBar: React.FC<QueryBarProps> = (props) => {
         const { query, customStep } = setQueryTimeInterval(
             queryString,
             width,
-            start,
-            stop
+            data.start,
+            data.stop
         );
         saveLogsVolumeQuery({ query, customStep });
     };
+
     const onSubmit = (e: any) => {
         e.preventDefault();
         const ds: any = dataSources.find((f: any) => f.id === dataSourceId);
@@ -464,12 +459,13 @@ const QueryBar: React.FC<QueryBarProps> = (props) => {
         }
     };
 
-    const saveQuery = (e:any = []) => {
+    const saveQuery = (e: any = []) => {
         if (e?.length > 0) {
             const queryParams = new URLSearchParams(hash.replace(/#/, ""));
             const multiline = e
                 ?.map((text: any) => text.children[0].text)
                 .join("\n");
+
             const panel = [...panelQuery];
             panel.forEach((query) => {
                 if (query.id === id) {
@@ -536,9 +532,7 @@ const QueryBar: React.FC<QueryBarProps> = (props) => {
         if (!isEmptyQuery) {
             query = addQueryInterval(queryInput);
             setQueryInput(query);
-            setQueryValue([
-                { children: [{ text: DOMPurify.sanitize(query) }] },
-            ]);
+            setQueryValue([{ children: [{ text: sanitizeWithSigns(query) }] }]);
             setQueryValid(onQueryValid(query));
         }
 
@@ -671,7 +665,10 @@ const QueryBar: React.FC<QueryBarProps> = (props) => {
 
         if (queryExpr.includes("$__interval")) {
             isMatrix = true;
-            const timeDiff = (stop.getTime() - start.getTime()) / 1000;
+
+            const timeStart = new Date(data?.start);
+            const timeStop = new Date(data?.stop);
+            const timeDiff = (timeStop.getTime() - timeStart.getTime()) / 1000;
             const timeProportion = timeDiff / 30;
             const screenProportion = Number(
                 (width / window.innerWidth).toFixed(1)
@@ -695,6 +692,7 @@ const QueryBar: React.FC<QueryBarProps> = (props) => {
     const updateLinksHistory = () => {
         const ds = dataSources.find((f: any) => f.id === dataSourceId);
         const storedUrl = saveUrl.add(
+            hash,
             {
                 data: {
                     href: window.location.href,
@@ -713,7 +711,7 @@ const QueryBar: React.FC<QueryBarProps> = (props) => {
 
         dispatch(setLinksHistory(storedUrl));
     };
-    function handleHistoryClick(e: any) {
+    function handleHistoryClick() {
         dispatch(setHistoryOpen(!historyOpen));
     }
     function onShowQuerySettings() {
@@ -960,6 +958,7 @@ const QueryBar: React.FC<QueryBarProps> = (props) => {
                         handleLogValueChange={onLogChange}
                         handleLogsVolumeChange={onLogVolumeChange}
                     />,
+
                     <ShowLogsButton
                         disabled={!queryValid}
                         onClick={onSubmit}

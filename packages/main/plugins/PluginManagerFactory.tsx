@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import store  from "@ui/store/store";
+import store from "@ui/store/store";
 import { setPlugins } from "./actions";
 import { Plugin } from "./types";
 
@@ -52,7 +52,6 @@ export function LocalPluginsManagement() {
         if (!plugins[location]) {
             plugins[location] = [];
         }
-
         if (!plugins[location]?.some((s: any) => s.name === plugin.name)) {
             plugins[location].push(plugin);
             localStorage.setItem("plugins", JSON.stringify(plugins));
@@ -101,12 +100,35 @@ export function LocalPluginsManagement() {
         }
     }
 
+    function togglePluginVisibility(
+        location: string,
+        name: string,
+        visible: boolean
+    ) {
+        const plugins = getAll();
+        const pluginIndex = plugins[location]?.findIndex(
+            (pl: any) => pl?.name === name
+        );
+
+        if (pluginIndex >= 0) {
+            const updatedPlugins = {
+                ...plugins,
+                [location]: plugins[location].map((pl: any, index: number) =>
+                    index === pluginIndex ? { ...pl, visible } : pl
+                ),
+            };
+
+            localStorage.setItem("plugins", JSON.stringify(updatedPlugins));
+        }
+    }
+
     return {
         getAll,
         getPluginsFromLocation,
         setPlugin,
         removePlugin,
         togglePlugin,
+        togglePluginVisibility,
     };
 }
 
@@ -131,17 +153,13 @@ export function useActiveTabs(section: any) {
                 ([el]: [el: string]) => el === section
             )[0][1];
             // return queryItemPlugins
-            return queryItemPlugins?.filter((f: any) => f.active);
+            return queryItemPlugins?.filter((f: any) => f.active && f.visible);
         }
         return [];
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [plugins]);
-
-
 
     const isActiveTabs = useMemo(() => {
         return activeTabs?.length > 0;
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, activeTabs);
 
     return { activeTabs, isActiveTabs };
@@ -152,10 +170,30 @@ export function PluginManagerFactory(locations: ILocations) {
     const lp = LocalPluginsManagement();
     let localPlugins = lp.getAll();
 
-    // const dispatch: any = store.dispatch
+    function registerPlugin(plugin: any, totalPlugins: Plugin[]) {
+        // check for registered plugins vs locally stored
+        if (totalPlugins?.length > 0) {
+            for (const existingPlugin of totalPlugins) {
+                const section = existingPlugin.section;
 
-    // add plugin to a specific location
-    function registerPlugin(plugin: any) {
+                if (localPlugins[section]) {
+                    const totalPluginsFound = totalPlugins
+                        .filter((pl) => pl.section === section)
+                        .map(({ name }) => name);
+
+                    const filtered = localPlugins[section]?.filter(
+                        (p) => !totalPluginsFound.includes(p.name)
+                    );
+
+                    if (filtered?.length > 0) {
+                        filtered.forEach(({ section, name }) => {
+                            lp.removePlugin(section, name);
+                        });
+                    }
+                }
+            }
+        }
+
         if (!plugins[plugin.section]) {
             plugins[plugin.section] = [];
         }
@@ -176,7 +214,7 @@ export function PluginManagerFactory(locations: ILocations) {
     function registerPluginGlobally(plugin: any) {
         for (let location in locations) {
             if (location !== "Main") {
-                registerPlugin(plugin);
+                registerPlugin(plugin, plugins);
             }
         }
     }
@@ -205,14 +243,13 @@ export function PluginManagerFactory(locations: ILocations) {
     }
 
     function getPlugin(location: string, name: string) {
-        const unique = plugins?.[location]
-            ?.filter(
-                (obj: any, index: number) =>
-                    plugins[location]?.findIndex(
-                        (item: any) => item.name === obj.name
-                    ) === index
-            )
-           let found=unique?.find((f: any) => f?.name === name);
+        const unique = plugins?.[location]?.filter(
+            (obj: any, index: number) =>
+                plugins[location]?.findIndex(
+                    (item: any) => item.name === obj.name
+                ) === index
+        );
+        let found = unique?.find((f: any) => f?.name === name);
         return found || {};
     }
 
@@ -245,6 +282,8 @@ export const PluginManager = PluginManagerFactory(locations);
 
 export function initPlugins(plugins: Plugin[]) {
     plugins.forEach((plugin: any) => {
-        PluginManager.registerPlugin(plugin);
+        if (plugin.visible) {
+            PluginManager.registerPlugin(plugin, plugins);
+        }
     });
 }

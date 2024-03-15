@@ -1,4 +1,4 @@
-import { Dialog, Switch } from "@mui/material";
+import { Dialog } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation } from "react-router-dom";
@@ -20,6 +20,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import QueryLimit from "../../QueryTypeBar/components/QueryLimit";
 import { DialogStyles } from "@ui/plugins/settingsdialog/SettingsDialog";
+import CustomSwitch from "@ui/qrynui/CustomSwitch/CustomSwitch";
 
 // Query setting dialog menu
 type QuerySettingProps = {
@@ -55,26 +56,30 @@ const QuerySetting: React.FC<QuerySettingProps> = (props) => {
         const urlParams = new URLSearchParams(hash.replace(/#/, ""));
         const urlPanel: any = urlParams.get(name);
 
-        const parsedUrlPanel = JSON.parse(decodeURIComponent(urlPanel));
+        try {
+            const parsedUrlPanel = JSON.parse(decodeURIComponent(urlPanel));
 
-        if (parsedUrlPanel?.length > 0) {
-            const queryFromUrl = parsedUrlPanel.find((f: any) => f.idRef === idRef);
-            if (queryFromUrl) {
+            if (parsedUrlPanel?.length > 0) {
+                const queryFromUrl = parsedUrlPanel.find(
+                    (f: any) => f.idRef === idRef
+                );
+                if (queryFromUrl) {
+                    const panel = [...actPanel];
 
-                const panel = [...actPanel];
+                    const query = getPanelQueryByIDRef(panel, idRef);
 
-                const query = getPanelQueryByIDRef(panel, idRef);
-
-                if (typeof query !== "undefined") {
-                    query.queryType = queryFromUrl.queryType;
-                    query.direction = queryFromUrl.direction;
-                    dispatch(panelAction(name, panel));
+                    if (typeof query !== "undefined") {
+                        query.queryType = queryFromUrl.queryType;
+                        query.direction = queryFromUrl.direction;
+                        dispatch(panelAction(name, panel));
+                    }
                 }
             }
+        } catch (e) {
+            console.log(e);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-    
+
     const getPanelQueryByID = (panel: any, queryId: any) => {
         return panel.find((query: any) => {
             return query.id === queryId;
@@ -116,7 +121,7 @@ const QuerySetting: React.FC<QuerySettingProps> = (props) => {
             query.traceQueryType = e;
             dispatch(panelAction(name, panel));
         }
-        setQueryTraceSwitch((prev: any) => e);
+        setQueryTraceSwitch(() => e);
     }
     function onDirectionSwitchChange(e: any) {
         // modify query type switch value
@@ -194,6 +199,7 @@ const QuerySetting: React.FC<QuerySettingProps> = (props) => {
                 <SettingsInputContainer>
                     <div className="options-input">{traceOptions()}</div>
                     <div className="options-input">
+                        {/* Query type switch */}
                         <QueryTypeSwitch
                             label={"Query Type"}
                             options={SWITCH_OPTIONS}
@@ -202,6 +208,7 @@ const QuerySetting: React.FC<QuerySettingProps> = (props) => {
                         />
                     </div>
                     <div className="options-input">
+                        {/* Direction switch */}
                         <QueryTypeSwitch
                             label={"Direction"}
                             options={DIRECTION_SWITCH_OPTIONS}
@@ -210,16 +217,16 @@ const QuerySetting: React.FC<QuerySettingProps> = (props) => {
                         />
                     </div>
                     <div className="options-input">
+                        {/*  Query Limit input */}
                         <QueryLimit {...props} />
                     </div>
                     {dataSourceType === "flux" && (
                         <div className="options-input">
                             <SettingLabel>Chart View</SettingLabel>
-                            <Switch
-                                checked={isTableViewSet}
-                                size={"small"}
+                            {/* Chart View On flux datasource */}
+                            <CustomSwitch
+                                defaultActive={isTableViewSet}
                                 onChange={handleTableViewSwitch}
-                                inputProps={{ "aria-label": "controlled" }}
                             />
                         </div>
                     )}
@@ -227,24 +234,18 @@ const QuerySetting: React.FC<QuerySettingProps> = (props) => {
                         <div className="options-input">
                             <InputGroup>
                                 <SettingLabel>Timestamp</SettingLabel>
-                                <Switch
-                                    checked={isShowTsSet}
-                                    size={"small"}
+                                {/* Show Timestamp on vector view */}
+                                <CustomSwitch
+                                    defaultActive={isShowTsSet}
                                     onChange={handleTsSwitch}
-                                    inputProps={{
-                                        "aria-label": "controlled-ts",
-                                    }}
                                 />
                             </InputGroup>
                             <InputGroup>
                                 <SettingLabel>Query Builder</SettingLabel>
-                                <Switch
-                                    checked={isBuilderSet}
-                                    size={"small"}
+                                {/* Show Query builder on vector view */}
+                                <CustomSwitch
+                                    defaultActive={isBuilderSet}
                                     onChange={handleBuilderSwitch}
-                                    inputProps={{
-                                        "aria-label": "controlled-ts",
-                                    }}
                                 />
                             </InputGroup>
                         </div>

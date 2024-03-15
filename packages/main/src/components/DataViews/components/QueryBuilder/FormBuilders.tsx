@@ -2,7 +2,6 @@
 import { Builder, FormBuilderProps } from "./types";
 import { FlexColumn, MetricsContStyle } from "./styles";
 import { cx } from "@emotion/css";
-import DOMPurify from 'isomorphic-dompurify';
 import { LabelValuesSelectors, OperationFunctions } from "./renderers";
 import useTheme from '@ui/theme/useTheme'
 import { useMemo, useCallback, useState, useEffect } from "react";
@@ -14,6 +13,7 @@ import { useValuesFromMetrics } from "../Metrics/useValuesFromMetrics";
 import { MetricsLabelValueSelectors } from "./MetricsLabelValueSelector";
 import { BinaryOperatorsSelector } from "../../../QueryBuilder/Operations/Components/selectors";
 import { OperationBodyStyles } from "../../../QueryBuilder/Operations/OperationStyles";
+import sanitizeWithSigns from "@ui/helpers/sanitizeWithSigns";
 
 // get the initial state from props
 export const FormBuilders = (props: FormBuilderProps) => {
@@ -51,7 +51,7 @@ export const BinaryOperationBar = (props: any) => {
             setValueMatch(e.target.value);
             onBinaryOptChange(e, name);
         },
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        
         [valueMatch]
     );
     /// operator
@@ -60,7 +60,7 @@ export const BinaryOperationBar = (props: any) => {
             value: key,
             name: val,
         }));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        
     }, [binaryOperatorOpts]);
 
     const binaryVectorOpts = useMemo(() => {
@@ -68,7 +68,7 @@ export const BinaryOperationBar = (props: any) => {
             value: key,
             name: val,
         }));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        
     }, [binaryOperatorOpts]);
     return (
         <div>
@@ -92,7 +92,7 @@ export const BinaryOperationBar = (props: any) => {
                             opts={binaryVectorOpts}
                         />
                         <input
-                            value={DOMPurify.sanitize(valueMatch)}
+                            value={sanitizeWithSigns(valueMatch)}
                             onChange={(e: any) =>
                                 onValueMatchChange(e, "vectValue")
                             }
@@ -106,7 +106,7 @@ export const BinaryOperationBar = (props: any) => {
 };
 
 export const FormBuilder = (props: any) => {
-    const { builder, theme, idx, setBuilders, logsResponse, dataSourceId } =
+    const { builder, theme, idx, setBuilders, logsResponse, dataSourceId, start, stop } =
         props;
 
     // const [logsVolumeQuery, setLogsVolumeQuery] = useState(builder.logsVolumeQuery)
@@ -114,6 +114,7 @@ export const FormBuilder = (props: any) => {
     const [labelsString, setLabelsString] = useState(
         logsToString(builder.labelValuesState) || ""
     );
+   
     const labelValueMemo = useMemo(() => {
         if (builder?.labelValuesState) {
             let labelString = labelsToString(builder?.labelValuesState);
@@ -121,7 +122,7 @@ export const FormBuilder = (props: any) => {
         }
         return {};
     }, [builder.labelValuesState]);
-    const metricsOpts = useValuesFromMetrics(dataSourceId);
+    const metricsOpts = useValuesFromMetrics(dataSourceId, start, stop);
     const [metricValue, setMetricValue] = useState(
         metricsOpts[0] || { label: "", value: "" }
     );
@@ -146,7 +147,7 @@ export const FormBuilder = (props: any) => {
         });
 
         setFinalQuery(query);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        
     }, []);
 
     const onClose = () => {
@@ -158,11 +159,11 @@ export const FormBuilder = (props: any) => {
     const onMetricChange = (e: any) => {
         const { value } = e;
 
-        setMetricValue((prev: any) => {
+        setMetricValue(() => {
             return { value: value?.value, label: value?.value };
         });
     };
-    const handleMetricChange = (e: any) => {
+    const handleMetricChange = () => {
        // console.log(e);
     };
 
@@ -177,7 +178,10 @@ export const FormBuilder = (props: any) => {
         return logLabels;
     };
 
-    const onLabelValueChange = (e: any) => {};
+    const onLabelValueChange = (e: any) => {
+        localStorage.setItem("labelsSelectedChange", JSON.stringify(e));
+   
+    };
     const onBinaryOptionChange = (e: any, name: string) => {
         setBuilders((prev: any) => {
             const next = [...prev];
@@ -201,7 +205,7 @@ export const FormBuilder = (props: any) => {
             {builder.isBinary && (
                 <BinaryOperationBar
                     theme={theme}
-                    binaryValue={DOMPurify.sanitize(builder.binaryValue)}
+                    binaryValue={sanitizeWithSigns(builder.binaryValue)}
                     onBinaryOptChange={onBinaryOptionChange}
                     onBinaryClose={onClose}
                 />
@@ -214,13 +218,17 @@ export const FormBuilder = (props: any) => {
                             theme={theme}
                             onMetricChange={onMetricChange}
                             dataSourceId={dataSourceId}
+                            start={props.start}
+                            stop={props.stop}
                         />
                         <MetricsLabelValueSelectors
                             // label value selectors for metrics
                             index={idx}
+                            start={props.start}
+                            stop={props.stop}
                             onChange={onLabelValueChange} // this will be set
                             dataSourceId={dataSourceId}
-                            value={DOMPurify.sanitize(metricValue.value)}
+                            value={sanitizeWithSigns(metricValue.value)}
                             setBuilders={setBuilders}
                             finalQuery={finalQuery}
                             builder={builder}
@@ -234,6 +242,8 @@ export const FormBuilder = (props: any) => {
                     <LabelValuesSelectors
                         //  Label value selector for logs
                         {...builder}
+                        start={props.start}
+                        stop={props.stop}
                         dataSourceId={dataSourceId}
                         logsResponse={logsResponse}
                         setLabelsString={setLabelsString}
@@ -253,6 +263,8 @@ export const FormBuilder = (props: any) => {
                 {...builder}
                 setBuilders={setBuilders}
                 dataSourceId={dataSourceId}
+                start={props.start}
+                stop={props.stop}
                 labelsString={handleMetricType(
                     builder,
                     labelsString,
@@ -267,18 +279,20 @@ export const FormBuilder = (props: any) => {
     );
 };
 export interface MetricSelectorProps {
+    start: Date;
+    stop: Date;
     theme: any;
     dataSourceId: string;
     onMetricChange(e: any): void;
 }
 export const MetricsSelector = (props: MetricSelectorProps) => {
-    const { dataSourceId, theme, onMetricChange } = props;
-    const metricsOpts = useValuesFromMetrics(dataSourceId);
+    const { dataSourceId, theme, onMetricChange, start, stop } = props;
+    const metricsOpts = useValuesFromMetrics(dataSourceId, start, stop);
     return (
         <InputSelect
             isMulti={false}
             type={"metric"}
-            defaultValue={DOMPurify.sanitize("Select Metric...")}
+            defaultValue={sanitizeWithSigns("Select Metric...")}
             selectOpts={metricsOpts}
             mainTheme={theme}
             onChange={onMetricChange}

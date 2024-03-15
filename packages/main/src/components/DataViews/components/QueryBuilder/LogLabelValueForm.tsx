@@ -1,13 +1,13 @@
 import { useMemo, useRef, useState } from "react";
-import RemoveOutlinedIcon from '@mui/icons-material/RemoveOutlined';
+import RemoveOutlinedIcon from "@mui/icons-material/RemoveOutlined";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import { OPERATOR_OPTIONS } from "./consts";
-import {  LabelValueContStyles, FlexCenter, IconStyle } from "./styles";
+import { LabelValueContStyles, FlexCenter, IconStyle } from "./styles";
 import { cx } from "@emotion/css";
 import useTheme from "@ui/theme/useTheme";
 import { InputSelect } from "./InputSelect";
 import useLogLabelValues from "./hooks/useLogLabelValues";
-import DOMPurify from 'isomorphic-dompurify'
+import sanitizeWithSigns from "@ui/helpers/sanitizeWithSigns";
 
 export const LogLabelValueForm = (props: any) => {
     const {
@@ -19,23 +19,28 @@ export const LogLabelValueForm = (props: any) => {
         labelValuesLength,
         id,
         dataSourceId,
+        start,
+        stop,
     } = props;
-
 
     const optRef = useRef<any>(null);
     const operatorRef = useRef<any>(null);
     const valueRef = useRef<any>(null);
 
-    const mainTheme = useTheme()
+    const mainTheme = useTheme();
 
-   
     const [localKeyVal, setLocalKeyVal] = useState(keyVal);
 
     const [labelValue, setLabelValue] = useState(
         labelOpts[0] || { label: "Select Option", value: "" }
     );
-    
-    const {logsResponse:valueSelectOpts} = useLogLabelValues(dataSourceId,labelValue.value)
+
+    const { logsResponse: valueSelectOpts } = useLogLabelValues(
+        dataSourceId,
+        labelValue.value,
+        start,
+        stop
+    );
 
     const [operatorValue, setOperatorValue] = useState({
         label: "=",
@@ -105,15 +110,14 @@ export const LogLabelValueForm = (props: any) => {
         return false;
     }, [operatorValue.value]);
 
-
-    if(labelValuesLength > 0) {
-       return (
+    if (labelValuesLength > 0) {
+        return (
             <div id={id} className={cx(LabelValueContStyles)}>
                 <InputSelect
                     ref={optRef}
                     type={"label"}
                     isMulti={false}
-                    defaultValue={DOMPurify.sanitize(keyVal.label)}
+                    defaultValue={sanitizeWithSigns(keyVal.label)}
                     selectOpts={labelOpts}
                     mainTheme={mainTheme}
                     onChange={onLabelChange}
@@ -127,7 +131,7 @@ export const LogLabelValueForm = (props: any) => {
                     ref={operatorRef}
                     type={"operator"}
                     isMulti={false}
-                    defaultValue={DOMPurify.sanitize(keyVal.operator)}
+                    defaultValue={sanitizeWithSigns(keyVal.operator)}
                     selectOpts={OPERATOR_OPTIONS}
                     keyVal={keyVal}
                     mainTheme={mainTheme}
@@ -141,7 +145,7 @@ export const LogLabelValueForm = (props: any) => {
                         ref={valueRef}
                         type={"value"}
                         isMulti={isMulti}
-                        defaultValue={DOMPurify.sanitize(keyVal.values)}
+                        defaultValue={sanitizeWithSigns(keyVal.values)}
                         selectOpts={valueSelectOpts}
                         keyVal={keyVal}
                         mainTheme={mainTheme}
@@ -152,12 +156,12 @@ export const LogLabelValueForm = (props: any) => {
                     />
                     <RemoveOutlinedIcon
                         className={cx(IconStyle(mainTheme))}
-                        style={{height:'14px', width:'14px'}}
+                        style={{ height: "14px", width: "14px" }}
                         onClick={cleanAndRemove}
                     />
                     <AddOutlinedIcon
                         className={cx(IconStyle(mainTheme))}
-                        style={{height:'14px', width:'14px'}}
+                        style={{ height: "14px", width: "14px" }}
                         onClick={labelAdd}
                     />
                 </div>
@@ -165,7 +169,5 @@ export const LogLabelValueForm = (props: any) => {
         );
     }
 
-    return null
+    return null;
 };
-
-
