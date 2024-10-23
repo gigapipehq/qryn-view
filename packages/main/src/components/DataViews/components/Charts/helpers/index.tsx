@@ -94,6 +94,7 @@ export interface TimeSpan {
 export function getTimeSpan(data: any): TimeSpan {
     const tsArray = data
         .map((tsItem: any) =>
+            //eslint-disable-next-line
             tsItem?.data?.map(([t, v]: [t: any, v: any]) => t)
         )
         .flat()
@@ -128,19 +129,25 @@ export const getBarWidth = (tSpan: TimeSpan, width: number) => {
     return barWidth;
 };
 
-export function formatDateRange(data: any) {
-    const { timeSpan, first, last } = getTimeSpan(data);
+export function formatDateRange(data: any, start, stop) {
+
+
+
+    // first and last should be only when selecting with range
+     const { timeSpan, } = getTimeSpan(data);
 
     const formatted =
-        timeSpan > 1
+        timeSpan > 0
             ? "%m/%d %H:%M"
             : timeSpan > 30
             ? "%y/%m/%d %H:%M"
             : "%H:%M:%S";
     return {
         timeformat: formatted,
-        min: first,
-        max: last,
+        // min: first,
+        // max: last,
+        min: start / 1000,
+        max: stop / 1000,
     };
 }
 
@@ -219,7 +226,7 @@ export function formatLabel(labels: any, isLogsVolume = false, length:number) {
     }
 
     if (isLogsVolume && labelResult) {
-
+        //eslint-disable-next-line
         return Object.entries(labelResult)?.map(([_, value]) => value);
         
     } else if (!isLogsVolume && labelResult) {

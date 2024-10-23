@@ -1,6 +1,7 @@
 import useCardinalityStore from "./store/CardinalityStore";
 import dayjs from "dayjs";
 import { useSelector } from "react-redux";
+import { LABEL_VALUE_STORE } from "./consts";
 import { CardinalityRequest } from "./api/types";
 
 const getSeriesSelector = (label: string | null, value: string): string => {
@@ -18,20 +19,42 @@ export const getValuesArrayToString = (values: string[]): string => {
     return values?.map((value) => `\"${value}\"`).join(",");
 };
 
+const labelsFreq = (arr: string[]) =>
+    arr.reduce((cnt, cur) => ((cnt[cur] = cnt[cur] + 1 || 1), cnt), {});
+
 /**
  *
  * @param labelsArray
  * @returns a string with the label / values selected
  */
 
-const getSeriesArraySelector = (labelsArray: string[]): string => {
+export const getSeriesArraySelector = (labelsArray: string[]): string => {
     if (labelsArray?.length < 1) {
         return "";
     }
 
     let LabelsString = "{";
     let labelslength = labelsArray.length;
+
+    let lsarray = [];
+    // generate labels array splitting by equals or non equals
     for (let i = 0; i < labelslength; i++) {
+        const [label] = labelsArray[i].split(/(=|!=)/);
+        lsarray.push(label);
+    }
+    // check for frequency of same label
+    const labelsFrequency = labelsFreq(lsarray);
+
+    for (let i = 0; i < labelslength; i++) {
+        let currentLabel = lsarray[i];
+        // check if non equals label is hit and another one in the room is present
+        if (
+            labelsArray[i].includes("!=") &&
+            labelsFrequency[currentLabel] > 1
+        ) {
+            continue;
+        }
+
         const [lb, val] = labelsArray[i].split("=");
 
         LabelsString += `${lb}=\"${val}\"`;
@@ -46,32 +69,113 @@ const getSeriesArraySelector = (labelsArray: string[]): string => {
 };
 
 interface QueryUpdaterArgs {
-    query: string;
-    focusLabel: string;
-    match: string;
+    query?: string;
+    focusLabel?: string;
+    match?: string;
+    isDialog?: boolean;
 }
 
 export type QueryUpdater = {
     [key: string]: (args: QueryUpdaterArgs) => string;
 };
-
+// rmove localstorage on change when empty the input
 export const queryUpdater: QueryUpdater = {
-    seriesCountByMetricName: ({ query }): string => {
-        return getSeriesSelector("__name__", query);
+    seriesCountByMetricName: ({ query, match, isDialog }): string => {
+        const query_with_label = `__name__=${query}`;
+
+        if (!match) {
+           !isDialog && localStorage.setItem(LABEL_VALUE_STORE, query_with_label);
+            return getSeriesSelector("__name__", query);
+        }
+
+        const prev_match = match.replace(/[{}"]/g, "").replace(/[,]/g, " ");
+        const prev_match_splitted = prev_match.split(" ");
+        let queryStr = `${prev_match} ${query_with_label}`;
+        const name_open_query = "__name__!=";
+        const has_name_open_query =
+            prev_match_splitted.includes(name_open_query);
+        const has_query_with_label =
+            prev_match_splitted.includes(query_with_label);
+
+        if (has_name_open_query) {
+            queryStr = prev_match_splitted
+                .map((value) =>
+                    value === name_open_query ? query_with_label : value
+                )
+                .join(" ");
+        }
+
+        if (has_query_with_label) {
+            queryStr = prev_match;
+        }
+
+        !isDialog && localStorage.setItem(LABEL_VALUE_STORE, queryStr);
+        const labelsArray = queryStr.split(" ");
+        return getSeriesArraySelector(labelsArray);
     },
-    seriesCountByLabelName: ({ query }): string => {
-        return `{${query}!=""}`;
+
+    //Labels with the highest number of series
+    seriesCountByLabelName: ({ query, match, isDialog }): string => {
+        const queryFormatted = `${query}!=`;
+        const queryBrackets = `{${queryFormatted}""}`;
+
+        if (queryBrackets === match) {
+            return queryBrackets;
+        }
+
+        if (!match) {
+            !isDialog && localStorage.setItem(LABEL_VALUE_STORE, `${queryFormatted}`);
+            return queryBrackets;
+        }
+
+        const prev_match = match.replace(/[{}"]/g, "").replace(/[,]/g, " ");
+
+        const previous_label_values_pairs_list = prev_match.split(" ");
+        const previous_label_value_pairs_exists =
+            previous_label_values_pairs_list.some(
+                (value) => value.split("=")[0] === query
+            );
+
+        const previous_label_exists = previous_label_values_pairs_list.some(
+            (value) => value === queryFormatted
+        );
+
+        let queryStr = `${prev_match} ${queryFormatted}`;
+
+        if (previous_label_value_pairs_exists) {
+            queryStr = previous_label_values_pairs_list
+                .map((value) =>
+                    value.split("=")[0] === query ? queryFormatted : value
+                )
+                .join(" ");
+        }
+
+        if (previous_label_exists) {
+            queryStr = prev_match;
+        }
+
+       !isDialog && localStorage.setItem(LABEL_VALUE_STORE, queryStr);
+        let labelsArray = queryStr.split(" ");
+        return getSeriesArraySelector(labelsArray);
     },
+
+    // Values for "${str}" label with the highest number of series`
     seriesCountByFocusLabelValue: ({ query, focusLabel }): string => {
         return getSeriesSelector(focusLabel, query);
     },
-    seriesCountByLabelValuePair: ({ query }): string => {
+
+    //Label=value pairs with the highest number of series
+    seriesCountByLabelValuePair: ({ query, match, isDialog }): string => {
+
         let previous_match;
 
         try {
-            const prev = localStorage.getItem("labelValuePairs");
+            const prev = localStorage.getItem(LABEL_VALUE_STORE);
+            
             if (prev) {
                 previous_match = prev;
+            } else if (match && match !== "") {
+                previous_match = match;
             } else {
                 previous_match = "";
             }
@@ -82,29 +186,46 @@ export const queryUpdater: QueryUpdater = {
         let queryStr = "";
 
         if (previous_match && !previous_match.includes(query)) {
-            queryStr = `${previous_match} ${query}`;
+            const striped = previous_match
+                .replace(/[{}"]/g, "")
+                .replace(/[,]/g, " ");
 
-            localStorage.setItem("labelValuePairs", queryStr);
+
+            const previous_striped_values = striped.split(" ");
+
+            const query_splitted = query.split("=");
+
+            const query_label = query_splitted[0] + "!=";
+
+            if (previous_striped_values.includes(query_label)) {
+                queryStr = previous_striped_values
+                    .map((value) => (value === query_label ? query : value))
+                    .join(" ");
+
+            } else {
+                queryStr = `${striped} ${query}`;
+            }
+    
+           !isDialog && localStorage.setItem(LABEL_VALUE_STORE, queryStr);
+
         } else if (previous_match && previous_match.includes(query)) {
+
             let prevArray = previous_match.split(" ");
-
             let filtered = prevArray.filter((f) => f !== query);
-
             let joint = filtered.join(" ");
+            queryStr = isDialog ? previous_match : joint 
+            !isDialog && localStorage.setItem(LABEL_VALUE_STORE, joint);
 
-            queryStr = joint;
-
-            localStorage.setItem("labelValuePairs", joint);
         } else if (previous_match === "") {
             queryStr = query;
-
-            localStorage.setItem("labelValuePairs", queryStr);
+            !isDialog && localStorage.setItem(LABEL_VALUE_STORE, queryStr);
         }
 
         let labelsArray = queryStr.split(" ");
-
         return getSeriesArraySelector(labelsArray);
     },
+
+    //Labels with the highest number of unique values
     labelValueCountByLabelName: ({ query, match }): string => {
         if (match === "") {
             return `{${query}!=""}`;
@@ -229,15 +350,19 @@ export const useDataSourceData = (type: string) => {
 
     const isAuth = authData.basicAuth.value;
 
+    let user_pass = { u: "", p: "" };
+
     if (isAuth) {
         let [user, password] = authData.fields.basicAuth;
         let passwordValue = password.value;
         let userValue = user.value;
+        user_pass.u = user?.value;
+        user_pass.p = password?.value;
 
         auth = serializeUserPassword(userValue, passwordValue);
     }
 
-    return { url, auth, headers: reqHeaders };
+    return { url, auth, user_pass, headers: reqHeaders };
 };
 
 // gets the data from the  CardinalityStore
@@ -311,3 +436,14 @@ export const getSeriesProps = (series: any, focusLabel?: string) => {
         rows: getRows(series),
     };
 };
+
+export function calcQuotaOverCardinality(cardinality: number, quota: number) {
+    if (quota === 0) return 0;
+
+    return (cardinality * 100) / quota;
+}
+
+export function isQuotaWarning(quotaOverCardinality: number) {
+    if (quotaOverCardinality === 0) return false;
+    return quotaOverCardinality > 60;
+}

@@ -177,17 +177,23 @@ export async function checkLocalAPI(
                 setResponseType(ResponseEnum.GO);
                 LocalPluginsManagement().togglePluginVisibility(
                     "Query Item",
-                    "Cardinal View",
+                    "Cardinality View",
                     true
                 );
+           
                 isReady = true;
             } else {
                 setResponseType(ResponseEnum.NODE);
                 LocalPluginsManagement().togglePluginVisibility(
                     "Query Item",
-                    "Cardinal View",
+                    "Cardinality View",
                     false
                 );
+                LocalPluginsManagement().togglePlugin(
+                    "Query Item",
+                    "Cardinality View",
+                    false
+                )
                 isReady = true;
             }
         }
