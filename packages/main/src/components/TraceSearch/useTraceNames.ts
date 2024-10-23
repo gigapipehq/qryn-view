@@ -6,8 +6,8 @@ import { getHeaders } from "./helpers";
 export function useTraceNames({ id }: any) {
     const dataSources = useSelector(({ dataSources }: any) => dataSources);
 
-    const [traceNames, settraceNames] = useState(
-        { data: { tagValues: [] } } || {}
+    const [traceNames, settraceNames] = useState <any>(
+        { data: { tagValues: [] } }
     );
 
     const dataSource = useMemo(() => {
@@ -38,7 +38,7 @@ export function useTraceNames({ id }: any) {
 
             apiRequest();
         }
-          // eslint-disable-next-line react-hooks/exhaustive-deps
+          
     }, []);
 
     return useMemo(() => {

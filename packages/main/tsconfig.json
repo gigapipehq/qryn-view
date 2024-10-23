@@ -32,12 +32,11 @@
             "@ui/services/*": ["services/*"],
             "@ui/theme/*": ["theme/*"],
             "@ui/qrynui/*": ["qrynui/*"],
-            "@ui/environment/*":["environment/*"]
+            "@ui/environment/*":["environment/*"],
+            "@util/*":["util/*"],
+            "react": ["./node_modules/@types/react"],
         }
     },
-    "include": ["src","views"],
-    "paths": {
-        "react": ["./node_modules/@types/react"],
-    },
+    "include": ["src","views","util", "plugins"],
     "references": [{ "path": "./tsconfig.node.json" }]
 }

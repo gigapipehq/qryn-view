@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import jsonMarkup from "json-markup";
+import jsonMarkup from "../../utils/jsonMarkup";
 import React from 'react';
 
 
@@ -68,7 +68,6 @@ function parseIfComplexJson(value: unknown) {
         // otherwise just return as is
         try {
             return JSON.parse(value);
-            // eslint-disable-next-line no-empty
         } catch (_) {}
     }
     return value;

@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-import { QrynTheme } from "@ui/theme/types";
 
 export const MainViewStyled = styled.div`
     padding-top: 5px;
@@ -44,10 +43,10 @@ export const SettingsInputContainer = styled.div`
 `;
 
 
-export const SettingLabel = styled.label`
+export const SettingLabel = styled.div`
     font-size: 11px;
     white-space: nowrap;
     color: ${({ theme }:any) => theme.hardContrast};
-    margin-left: 10px;
+   
 `;
 

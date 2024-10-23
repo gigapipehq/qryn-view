@@ -24,7 +24,7 @@ jobs:
             - uses: actions/checkout@v4
               with:
                   fetch-depth: 2
-            - uses: pnpm/action-setup@v2.4.0
+            - uses: pnpm/action-setup@v4.0.0
               with:
                   version: 8
 
@@ -36,12 +36,36 @@ jobs:
               with:
                   tag-prefix: "v"
                   skip-tag: true
+                  minor-wording: 'feat,add,Adds,new'
+                  major-wording: 'MAJOR,cut-major'
+                  patch-wording: 'Fix,patch,fixes,fix,dependabot,deps-dev,deps,Bumps,chore'
 
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              
+            - name: "Main Package Version Bump"
+              if: github.event_name != 'pull_request'
+              id: main-version
+              uses: "phips28/gh-action-bump-version@master"
+              with:
+                  tag-prefix: "v"
+                  skip-tag: true
+                  minor-wording: 'feat,add,Adds,new'
+                  major-wording: 'MAJOR,cut-major'
+                  patch-wording: 'Fix,patch,fixes,fix,dependabot,deps-dev,deps,Bumps,chore'
+    
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  PACKAGEJSON_DIR:  'packages/main'
+            
             - name: "version check"
               if: github.event_name != 'pull_request'
               run: echo ${{steps.version.outputs.newTag}}
+
+            - name: "main version check"
+              if: github.event_name != 'pull_request'
+              run: echo ${{steps.main-version.outputs.newTag}}
+
             - name: Use Node.js ${{ matrix.node-version }}
               uses: actions/setup-node@v4
               with:
@@ -75,29 +99,6 @@ jobs:
                   draft: false
                   prerelease: false
                   overwrite: true
-            - name: Prepare for Mothership
-              if: github.event_name != 'pull_request'
-              uses: GuillaumeFalourd/create-other-repo-branch-action@v1.5
-              with:
-                  repository_owner: metrico
-                  repository_name: qryn
-                  new_branch_name: view_${{steps.version.outputs.newTag}}
-                  new_branch_ref: master
-                  access_token: ${{ secrets.GH_PUSH }}
-            - name: Push to Mothership
-              if: github.event_name != 'pull_request'
-              uses: cpina/github-action-push-to-another-repository@main
-              env:
-                  API_TOKEN_GITHUB: ${{ secrets.GH_PUSH }}
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                  source-directory: "packages/main/dist"
-                  target-directory: "view"
-                  target-branch: view_${{steps.version.outputs.newTag}}
-                  destination-github-username: "metrico"
-                  destination-repository-name: "qryn"
-                  user-email: lorenzo.mangani@gmail.com
-                  commit-message: Upgrade view to ${{steps.version.outputs.newTag}}
             - name: Deploy to gh-pages 🚀
               if: github.event_name != 'pull_request'
               uses: JamesIves/github-pages-deploy-action@v4.2.3
