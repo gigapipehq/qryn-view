@@ -48,26 +48,28 @@ const PluginsRoute = lazy(() => import("../plugins/Plugins"));
 const UserRoles = lazy(() => import("../views/User/UserRoles"));
 errorInterceptor(axios);
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-    <React.StrictMode>
-        <CookiesProvider>
-            <Provider store={store}>
-                <HashRouter basename="">
-                    <Suspense fallback={<ScreenLoader />}>
-                        <Routes>
-                            <Route path="/" element={<AppRoute />}>
-                                <Route index element={<MainRoute />} />
-                                <Route
-                                    path="/search/*"
-                                    index
-                                    element={<MainRoute />}
-                                />
-                                <Route
-                                    path="/plugins"
-                                    element={<PluginsRoute />}
-                                />
-                                <Route path="/users" element={<UserRoles />} />
-
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+<React.StrictMode>
+<CookiesProvider>
+    <Provider store={store}>
+        <BrowserRouter basename="/">
+            <Suspense fallback={<ScreenLoader />}>
+                <Routes>
+                    <Route path="/" element={<AppRoute />}>
+                        <Route index element={<MainRoute />} />
+                        <Route
+                            path="/search/*"
+                            index
+                            element={<MainRoute />}
+                        />
+                        <Route
+                            path="/plugins/*"
+                            element={<PluginsRoute />}
+                        />
+                           <Route
+                            path="/users/*"
+                            element={<UserRoles />}
+                        />
                                 <Route
                                     path="/datasources/*"
                                     element={
